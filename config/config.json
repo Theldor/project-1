@@ -1,0 +1,75 @@
+{
+  "camera": {
+    "backend": "picamera2",
+    "device_index": 0,
+    "width": 320,
+    "height": 240,
+    "fps": 30,
+    "flip_horizontal": false,
+    "flip_vertical": false,
+    "rotation": 0
+  },
+  "pose": {
+    "model_complexity": 0,
+    "min_detection_confidence": 0.5,
+    "min_tracking_confidence": 0.5
+  },
+  "metrics": {
+    "visibility_threshold": 0.5,
+    "smoothing": {
+      "enabled": true,
+      "type": "ema",
+      "alpha": 0.2,
+      "one_euro_min_cutoff": 1.2,
+      "one_euro_beta": 0.02,
+      "one_euro_d_cutoff": 1.0
+    },
+    "hold_seconds": 0.5,
+    "decay_seconds": 1.5
+  },
+  "mapping": {
+    "segments": 8,
+    "neutral_angles": [90, 90, 90, 90, 90, 90, 90, 90],
+    "min_angles": [30, 30, 30, 30, 30, 30, 30, 30],
+    "max_angles": [150, 150, 150, 150, 150, 150, 150, 150],
+    "weights": [0.2, 0.4, 0.6, 0.8, 0.8, 0.6, 0.4, 0.2],
+    "upper_weights": [0.1, 0.2, 0.4, 0.6, 0.8, 0.8, 0.6, 0.4],
+    "directions": [1, 1, 1, 1, 1, 1, 1, 1],
+    "upper_segment_start": 4,
+    "gain": {
+      "lean": 30.0,
+      "neck": 25.0,
+      "tilt": 10.0
+    },
+    "deadband_deg": 1.0,
+    "max_deg_per_sec": 120.0
+  },
+  "servo": {
+    "enabled": true,
+    "i2c_address": "0x40",
+    "frequency_hz": 50,
+    "channels": [0, 1, 2, 3, 4, 5, 6, 7],
+    "pulse_min_us": 500,
+    "pulse_max_us": 2500,
+    "actuation_range": 180
+  },
+  "runtime": {
+    "dry_run": true,
+    "show_debug_view": false,
+    "vision_hz": 10,
+    "servo_hz": 20,
+    "log_level": "INFO"
+  },
+  "calibration": {
+    "baseline": {
+      "lean_deg": 0.0,
+      "neck_deg": 0.0,
+      "tilt_deg": 0.0
+    },
+    "normalization": {
+      "lean_deg": 25.0,
+      "neck_deg": 25.0,
+      "tilt_deg": 15.0
+    }
+  }
+}

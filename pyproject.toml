@@ -1,5 +1,27 @@
 [project]
 name = "project-1"
 version = "0.1.0"
-requires-python = ">= 3.14.2"
-dependencies = []
+requires-python = ">= 3.11"
+dependencies = [
+  "mediapipe>=0.10.8",
+  "numpy>=1.24.0",
+  "opencv-python>=4.8.0",
+  "adafruit-blinka>=8.22.0",
+  "adafruit-circuitpython-pca9685>=3.4.10",
+  "adafruit-circuitpython-motor>=3.4.9",
+]
+
+[project.scripts]
+spine-run = "spine.main:main"
+spine-servo-calibrate = "spine.tools.servo_calibrate:main"
+spine-baseline-calibrate = "spine.tools.baseline_calibrate:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

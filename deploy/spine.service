@@ -1,0 +1,14 @@
+[Unit]
+Description=Spine posture mapper
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/project-1
+ExecStart=/home/pi/project-1/.venv/bin/python -m spine.main --config /home/pi/project-1/config/config.json
+Restart=on-failure
+User=pi
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
