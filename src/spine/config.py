@@ -54,6 +54,22 @@ DEFAULT_CONFIG = {
         "pulse_max_us": 2500,
         "actuation_range": 180,
     },
+    "stepper": {
+        "enabled": False,
+        "steps_per_rev": 200,
+        "microstep": 1,
+        "max_steps_per_sec": 800.0,
+        "min_pulse_us": 2.0,
+        "motors": [
+            {
+                "step_pin": 18,
+                "dir_pin": 23,
+                "enable_pin": 24,
+                "enable_active_low": True,
+                "angle_index": 0,
+            }
+        ],
+    },
     "runtime": {
         "dry_run": True,
         "show_debug_view": False,
@@ -133,6 +149,17 @@ def normalize_config(config):
     addr = servo_cfg.get("i2c_address", "0x40")
     if isinstance(addr, str):
         servo_cfg["i2c_address"] = int(addr, 0)
+
+    stepper_cfg = config.get("stepper", {})
+    stepper_cfg["steps_per_rev"] = max(1, int(stepper_cfg.get("steps_per_rev", 200)))
+    stepper_cfg["microstep"] = max(1, int(stepper_cfg.get("microstep", 1)))
+    stepper_cfg["max_steps_per_sec"] = float(stepper_cfg.get("max_steps_per_sec", 800.0))
+    stepper_cfg["min_pulse_us"] = float(stepper_cfg.get("min_pulse_us", 2.0))
+    motors = stepper_cfg.get("motors", [])
+    if not isinstance(motors, list):
+        motors = []
+    stepper_cfg["motors"] = motors
+    config["stepper"] = stepper_cfg
 
     runtime = config["runtime"]
     runtime["vision_hz"] = max(1, int(runtime.get("vision_hz", 10)))

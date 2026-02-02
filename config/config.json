@@ -53,6 +53,22 @@
     "pulse_max_us": 2500,
     "actuation_range": 180
   },
+  "stepper": {
+    "enabled": false,
+    "steps_per_rev": 200,
+    "microstep": 1,
+    "max_steps_per_sec": 800,
+    "min_pulse_us": 2,
+    "motors": [
+      {
+        "step_pin": 18,
+        "dir_pin": 23,
+        "enable_pin": 24,
+        "enable_active_low": true,
+        "angle_index": 0
+      }
+    ]
+  },
   "runtime": {
     "dry_run": true,
     "show_debug_view": false,

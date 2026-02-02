@@ -12,6 +12,7 @@ from .mapping import SpineMapper
 from .metrics import NormalizedMetrics, compute_metrics, normalize_metrics
 from .pose import PoseEstimator
 from .servo import create_servo_controller
+from .stepper import create_stepper_controller
 
 
 def parse_args():
@@ -90,7 +91,11 @@ def main():
     pose = PoseEstimator(config["pose"])
     smoother = MetricSmoother(config["metrics"])
     mapper = SpineMapper(config["mapping"])
-    servo = create_servo_controller(config["servo"], config["runtime"]["dry_run"])
+    use_stepper = bool(config.get("stepper", {}).get("enabled", False))
+    if use_stepper:
+        actuator = create_stepper_controller(config["stepper"], config["runtime"]["dry_run"])
+    else:
+        actuator = create_servo_controller(config["servo"], config["runtime"]["dry_run"])
 
     vision_interval = 1.0 / config["runtime"]["vision_hz"]
     servo_interval = 1.0 / config["runtime"]["servo_hz"]
@@ -152,7 +157,7 @@ def main():
             if now - last_servo >= servo_interval:
                 last_servo = now
                 angles = mapper.map_metrics(last_metrics, now)
-                servo.set_angles(angles)
+                actuator.set_angles(angles)
 
             if config["runtime"]["show_debug_view"] and last_frame is not None and last_filtered:
                 overlay = last_frame.copy()
@@ -170,7 +175,7 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        servo.close()
+        actuator.close()
         camera.close()
         pose.close()
         if config["runtime"]["show_debug_view"]:
