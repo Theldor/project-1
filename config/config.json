@@ -1,6 +1,6 @@
 {
   "camera": {
-    "backend": "picamera2",
+    "backend": "opencv",
     "device_index": 0,
     "width": 320,
     "height": 240,
