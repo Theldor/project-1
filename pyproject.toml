@@ -3,7 +3,9 @@ name = "project-1"
 version = "0.1.0"
 requires-python = ">= 3.11"
 dependencies = [
-  "mediapipe>=0.10.8",
+  "mediapipe==0.10.9; sys_platform == 'darwin'",
+  "mediapipe==0.10.13; sys_platform == 'linux' and platform_machine == 'aarch64'",
+  "mediapipe==0.10.13; sys_platform == 'linux' and platform_machine == 'x86_64'",
   "numpy>=1.24.0",
   "opencv-python>=4.8.0",
   "adafruit-blinka>=8.22.0",

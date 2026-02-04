@@ -86,6 +86,10 @@ def main():
     level_name = str(config["runtime"].get("log_level", "INFO")).upper()
     level = getattr(logging, level_name, logging.INFO)
     logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(message)s")
+    logging.info(
+        "Pose backend: mp.solutions.pose (mediapipe=%s)",
+        getattr(mp, "__version__", "unknown"),
+    )
 
     camera = create_camera(config["camera"])
     pose = PoseEstimator(config["pose"])

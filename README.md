@@ -35,6 +35,15 @@ src/spine/
    - `pip install -e .`
    - If you do not need a GUI window, you can replace `opencv-python` with `opencv-python-headless`.
 
+## Pose backend compatibility
+
+- This project uses the legacy MediaPipe API: `mp.solutions.pose`.
+- Recommended Python version is `3.11` on both macOS and Raspberry Pi.
+- The dependency pins in `pyproject.toml` lock MediaPipe to versions that provide
+  `mp.solutions.pose` for supported target platforms.
+- If startup fails with an error like `module 'mediapipe' has no attribute 'solutions'`,
+  reinstall MediaPipe with the pinned version for your platform.
+
 ## Running
 
 Dry run (no servos):
