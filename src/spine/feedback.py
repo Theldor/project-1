@@ -1,4 +1,5 @@
 import logging
+import os
 import platform
 import shutil
 import subprocess
@@ -168,6 +169,44 @@ class FaceProximitySignalMapper:
         return self._mapper.map_value(ratio)
 
 
+class OverlayAlertState:
+    def __init__(self, threshold, flash_interval_sec, flash_opacity):
+        self.threshold = _clamp(float(threshold), 0.0, 1.0)
+        self.flash_interval_sec = max(0.05, float(flash_interval_sec))
+        self.flash_opacity = _clamp(float(flash_opacity), 0.0, 1.0)
+        self._alert_active = False
+        self._flash_visible = False
+        self._last_flash_toggle = 0.0
+
+    def evaluate(self, target_level, max_opacity, now):
+        level = _clamp(float(target_level), 0.0, 1.0)
+        dim_alpha = _clamp(level * max_opacity, 0.0, 1.0)
+        if self.threshold >= 1.0:
+            self._alert_active = False
+            self._flash_visible = False
+            return dim_alpha, False, False
+
+        alert_active = level >= self.threshold
+        just_triggered = alert_active and not self._alert_active
+
+        if not alert_active:
+            self._alert_active = False
+            self._flash_visible = False
+            return dim_alpha, False, False
+
+        if just_triggered:
+            self._flash_visible = True
+            self._last_flash_toggle = now
+        elif now - self._last_flash_toggle >= self.flash_interval_sec:
+            self._flash_visible = not self._flash_visible
+            self._last_flash_toggle = now
+
+        self._alert_active = True
+        if self._flash_visible:
+            return self.flash_opacity, True, just_triggered
+        return 0.0, False, False
+
+
 class OverlayFeedbackController:
     def __init__(self, config, dry_run=False):
         self.dry_run = dry_run
@@ -175,13 +214,24 @@ class OverlayFeedbackController:
         self.update_interval = max(0.01, float(config.get("update_interval_sec", 0.02)))
         self.topmost = bool(config.get("topmost", True))
         self.fullscreen = bool(config.get("fullscreen", True))
-        self.disable_input = bool(config.get("disable_input", False))
+        self.disable_input = bool(config.get("disable_input", True))
         self.geometry = {
             "width": int(config.get("width", 1280)),
             "height": int(config.get("height", 720)),
             "x": int(config.get("x", 0)),
             "y": int(config.get("y", 0)),
         }
+        self.alert_text = str(config.get("alert_text", "Fix posture"))
+        self.alert_text_color = str(config.get("alert_text_color", "#FF3B30"))
+        self.alert_font_family = str(config.get("alert_font_family", "Helvetica"))
+        self.alert_font_size = max(16, int(config.get("alert_font_size", 86)))
+        self.alert_threshold = _clamp(float(config.get("alert_threshold", 0.92)), 0.0, 1.0)
+        self.flash_interval_sec = max(0.05, float(config.get("flash_interval_sec", 0.4)))
+        self.flash_opacity = _clamp(float(config.get("flash_opacity", 0.22)), 0.0, 1.0)
+        self.alert_chime_enabled = bool(config.get("alert_chime_enabled", True))
+        self.alert_chime_cooldown_sec = max(0.0, float(config.get("alert_chime_cooldown_sec", 8.0)))
+        self.alert_chime_command = str(config.get("alert_chime_command", "")).strip()
+        self.alert_chime_sound = str(config.get("alert_chime_sound", "Glass")).strip() or "Glass"
 
         self._target_level = 0.0
         self._last_alpha = None
@@ -189,6 +239,12 @@ class OverlayFeedbackController:
         self._root = None
         self._tcl_error = None
         self._click_through_enabled = False
+        self._alert_state = OverlayAlertState(
+            self.alert_threshold, self.flash_interval_sec, self.flash_opacity
+        )
+        self._last_chime_time = 0.0
+        self._alert_label = None
+        self._alert_label_visible = False
 
         if not self.dry_run:
             self._create_window()
@@ -262,6 +318,18 @@ class OverlayFeedbackController:
                     pass
             root.attributes("-alpha", 0.0)
             root.update_idletasks()
+
+            alert_label = tk.Label(
+                root,
+                text=self.alert_text,
+                fg=self.alert_text_color,
+                bg="black",
+                font=(self.alert_font_family, self.alert_font_size, "bold"),
+            )
+            alert_label.place(relx=0.5, rely=0.5, anchor="center")
+            alert_label.place_forget()
+            self._alert_label = alert_label
+
             if self.disable_input:
                 self._click_through_enabled = self._enable_macos_click_through(root)
                 if self._click_through_enabled:
@@ -278,6 +346,49 @@ class OverlayFeedbackController:
     def set_level(self, level):
         self._target_level = _clamp(float(level), 0.0, 1.0)
 
+    def _set_alert_label_visible(self, visible):
+        if self._alert_label is None:
+            return
+        visible = bool(visible)
+        if visible == self._alert_label_visible:
+            return
+        if visible:
+            self._alert_label.place(relx=0.5, rely=0.5, anchor="center")
+        else:
+            self._alert_label.place_forget()
+        self._alert_label_visible = visible
+
+    def _play_alert_chime(self, now):
+        if self.dry_run or not self.alert_chime_enabled:
+            return
+        if now - self._last_chime_time < self.alert_chime_cooldown_sec:
+            return
+
+        command = None
+        if self.alert_chime_command:
+            command = ["sh", "-lc", self.alert_chime_command]
+        else:
+            system = platform.system().lower()
+            if system == "darwin" and shutil.which("afplay"):
+                sound_path = f"/System/Library/Sounds/{self.alert_chime_sound}.aiff"
+                if os.path.exists(sound_path):
+                    command = ["afplay", sound_path]
+                else:
+                    command = ["afplay", "/System/Library/Sounds/Glass.aiff"]
+            elif system == "linux" and shutil.which("paplay"):
+                command = ["paplay", "/usr/share/sounds/freedesktop/stereo/dialog-warning.oga"]
+            elif system == "linux" and shutil.which("aplay"):
+                command = ["aplay", "/usr/share/sounds/alsa/Front_Center.wav"]
+
+        if not command:
+            return
+
+        try:
+            subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self._last_chime_time = now
+        except Exception as exc:
+            logging.debug("Alert chime failed: %s", exc)
+
     def poll(self):
         if self.dry_run or self._root is None:
             return
@@ -287,7 +398,13 @@ class OverlayFeedbackController:
             return
         self._last_update = now
 
-        alpha = self._target_level * self.max_opacity
+        alpha, show_alert_text, trigger_chime = self._alert_state.evaluate(
+            self._target_level, self.max_opacity, now
+        )
+        self._set_alert_label_visible(show_alert_text)
+        if trigger_chime:
+            self._play_alert_chime(now)
+
         if self._last_alpha is None or abs(alpha - self._last_alpha) >= 0.01:
             try:
                 self._root.attributes("-alpha", alpha)

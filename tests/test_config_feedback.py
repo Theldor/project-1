@@ -26,6 +26,20 @@ class ConfigFeedbackTests(unittest.TestCase):
 
         self.assertFalse(config["software_feedback"]["overlay"]["disable_input"])
 
+    def test_overlay_alert_defaults_are_applied(self):
+        config = copy.deepcopy(DEFAULT_CONFIG)
+        overlay = config["software_feedback"]["overlay"]
+        overlay.pop("alert_threshold", None)
+        overlay.pop("flash_interval_sec", None)
+        overlay.pop("flash_opacity", None)
+
+        normalize_config(config)
+
+        normalized = config["software_feedback"]["overlay"]
+        self.assertAlmostEqual(normalized["alert_threshold"], 0.92)
+        self.assertAlmostEqual(normalized["flash_interval_sec"], 0.4)
+        self.assertAlmostEqual(normalized["flash_opacity"], 0.22)
+
 
 if __name__ == "__main__":
     unittest.main()

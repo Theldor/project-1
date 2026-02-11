@@ -58,6 +58,8 @@ Force software overlay mode (starts transparent and darkens as you move closer t
 python -m spine.main --config config/config.json --software-feedback --feedback-mode overlay
 ```
 Keep your neutral posture for the first ~2 seconds so the baseline can lock.
+If proximity exceeds the alert threshold, dimming is suppressed and a flashing
+`Fix posture` warning appears; an optional chime can also play.
 
 Dry run (no hardware or software feedback output):
 ```
@@ -101,6 +103,11 @@ python -m spine.tools.baseline_calibrate --config config/config.json --seconds 3
 - `software_feedback.face_proximity.baseline_samples`: initial frames used to lock baseline face size
 - `software_feedback.face_proximity.visibility_threshold`: minimum landmark visibility to trust face spacing
 - `software_feedback.overlay.max_opacity`: maximum overlay darkness when user is much closer than baseline
+- `software_feedback.overlay.alert_threshold`: signal level that switches from dimming to flashing alert
+- `software_feedback.overlay.flash_interval_sec`: alert text blink interval
+- `software_feedback.overlay.flash_opacity`: overlay opacity during visible flash frame
+- `software_feedback.overlay.alert_chime_enabled`: play a notification chime when alert triggers
+- `software_feedback.overlay.alert_chime_command`: optional custom shell command for chime playback
 - `software_feedback.brightness.min_percent` / `max_percent`: screen brightness range
 - `software_feedback.brightness.command_template`: optional custom shell template with `{percent}` and `{scalar}`
 - `software_feedback.overlay.disable_input`: enables click-through overlay behavior (enabled by default)

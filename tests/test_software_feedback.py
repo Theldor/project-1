@@ -8,7 +8,12 @@ import mediapipe as mp
 # Keep tests runnable without editable install.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from spine.feedback import FaceProximitySignalMapper, PostureSignalMapper, compute_face_scale
+from spine.feedback import (
+    FaceProximitySignalMapper,
+    OverlayAlertState,
+    PostureSignalMapper,
+    compute_face_scale,
+)
 from spine.metrics import NormalizedMetrics, compute_metrics
 
 
@@ -140,6 +145,39 @@ class SoftwareFeedbackTests(unittest.TestCase):
         self.assertEqual(mapper.map_landmarks(_face_landmarks(0.10)), 0.0)
         self.assertEqual(mapper.map_landmarks(_face_landmarks(0.10)), 0.0)
         self.assertGreater(mapper.map_landmarks(_face_landmarks(0.13)), 0.9)
+
+    def test_overlay_alert_state_overrides_dimming_with_flash(self):
+        state = OverlayAlertState(threshold=0.9, flash_interval_sec=0.4, flash_opacity=0.25)
+
+        alpha, show_text, trigger_chime = state.evaluate(target_level=0.5, max_opacity=0.8, now=1.0)
+        self.assertAlmostEqual(alpha, 0.4)
+        self.assertFalse(show_text)
+        self.assertFalse(trigger_chime)
+
+        alpha, show_text, trigger_chime = state.evaluate(target_level=0.95, max_opacity=0.8, now=1.1)
+        self.assertAlmostEqual(alpha, 0.25)
+        self.assertTrue(show_text)
+        self.assertTrue(trigger_chime)
+
+        alpha, show_text, trigger_chime = state.evaluate(target_level=0.95, max_opacity=0.8, now=1.6)
+        self.assertAlmostEqual(alpha, 0.0)
+        self.assertFalse(show_text)
+        self.assertFalse(trigger_chime)
+
+        alpha, show_text, trigger_chime = state.evaluate(target_level=0.95, max_opacity=0.8, now=2.1)
+        self.assertAlmostEqual(alpha, 0.25)
+        self.assertTrue(show_text)
+        self.assertFalse(trigger_chime)
+
+    def test_overlay_alert_state_recovers_to_normal_dimming(self):
+        state = OverlayAlertState(threshold=0.9, flash_interval_sec=0.4, flash_opacity=0.25)
+        state.evaluate(target_level=0.95, max_opacity=0.8, now=1.0)
+        alpha, show_text, trigger_chime = state.evaluate(
+            target_level=0.3, max_opacity=0.8, now=1.1
+        )
+        self.assertAlmostEqual(alpha, 0.24)
+        self.assertFalse(show_text)
+        self.assertFalse(trigger_chime)
 
 
 if __name__ == "__main__":
