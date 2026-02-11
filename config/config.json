@@ -16,6 +16,7 @@
   },
   "metrics": {
     "visibility_threshold": 0.5,
+    "enable_upper_body_fallback": true,
     "smoothing": {
       "enabled": true,
       "type": "ema",
@@ -28,18 +29,26 @@
     "decay_seconds": 1.5
   },
   "mapping": {
-    "segments": 1,
-    "neutral_angles": [0],
-    "min_angles": [-45],
-    "max_angles": [45],
-    "weights": [1],
-    "upper_weights": [1],
-    "directions": [1],
-    "upper_segment_start": 0,
+    "control_mode": "hunch_push",
+    "segments": 2,
+    "neutral_angles": [0, 0],
+    "min_angles": [-35, -35],
+    "max_angles": [35, 35],
+    "weights": [1, 1],
+    "upper_weights": [1, 1],
+    "directions": [1, -1],
+    "upper_segment_start": 1,
     "gain": {
       "lean": 30.0,
       "neck": 20.0,
       "tilt": 10.0
+    },
+    "hunch_push": {
+      "source": "neck",
+      "use_absolute": true,
+      "activation_threshold": 0.12,
+      "full_scale": 0.75,
+      "max_push_deg": 28
     },
     "deadband_deg": 1.0,
     "max_deg_per_sec": 60.0
@@ -54,7 +63,7 @@
     "actuation_range": 180
   },
   "stepper": {
-    "enabled": true,
+    "enabled": false,
     "steps_per_rev": 200,
     "microstep": 1,
     "max_steps_per_sec": 800,
@@ -66,8 +75,44 @@
         "enable_pin": 24,
         "enable_active_low": true,
         "angle_index": 0
+      },
+      {
+        "step_pin": 5,
+        "dir_pin": 6,
+        "enable_pin": 13,
+        "enable_active_low": true,
+        "angle_index": 1
       }
     ]
+  },
+  "software_feedback": {
+    "enabled": true,
+    "mode": "overlay",
+    "allow_hardware_output": false,
+    "source": "face_proximity",
+    "use_absolute": false,
+    "activation_threshold": 1.05,
+    "full_scale": 1.25,
+    "smoothing_alpha": 0.25,
+    "face_proximity": {
+      "visibility_threshold": 0.5,
+      "baseline_samples": 20,
+      "baseline_alpha": 0.2
+    },
+    "overlay": {
+      "max_opacity": 0.8,
+      "update_interval_sec": 0.02,
+      "topmost": true,
+      "fullscreen": true,
+      "disable_input": true
+    },
+    "brightness": {
+      "min_percent": 35.0,
+      "max_percent": 100.0,
+      "update_interval_sec": 0.3,
+      "min_delta_percent": 2.0,
+      "command_template": ""
+    }
   },
   "runtime": {
     "dry_run": false,

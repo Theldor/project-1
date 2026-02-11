@@ -7,6 +7,12 @@ import mediapipe as mp
 
 from .camera import create_camera
 from .config import default_config_path, load_config
+from .feedback import (
+    FaceProximitySignalMapper,
+    NoopFeedbackController,
+    PostureSignalMapper,
+    create_feedback_controller,
+)
 from .filter import MetricSmoother
 from .mapping import SpineMapper
 from .metrics import NormalizedMetrics, compute_metrics, normalize_metrics
@@ -16,10 +22,24 @@ from .stepper import create_stepper_controller
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Posture-to-spine mapping")
+    parser = argparse.ArgumentParser(description="Posture feedback runtime")
     parser.add_argument("--config", default=default_config_path(), help="Path to config JSON")
-    parser.add_argument("--dry-run", action="store_true", help="Disable servo output")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Disable hardware and software feedback outputs",
+    )
     parser.add_argument("--debug-view", action="store_true", help="Show debug overlay window")
+    parser.add_argument(
+        "--software-feedback",
+        action="store_true",
+        help="Enable software feedback output (overlay/brightness)",
+    )
+    parser.add_argument(
+        "--feedback-mode",
+        choices=["overlay", "brightness", "both"],
+        help="Software feedback mode override",
+    )
     return parser.parse_args()
 
 
@@ -76,12 +96,24 @@ def _draw_metric_nodes(frame, landmarks, visibility_threshold=0.5):
 
 
 def main():
+    class _NoopActuator:
+        def set_angles(self, _angles):
+            pass
+
+        def close(self):
+            pass
+
     args = parse_args()
     config = load_config(args.config)
     if args.dry_run:
         config["runtime"]["dry_run"] = True
     if args.debug_view:
         config["runtime"]["show_debug_view"] = True
+    if args.software_feedback:
+        config["software_feedback"]["enabled"] = True
+    if args.feedback_mode:
+        config["software_feedback"]["enabled"] = True
+        config["software_feedback"]["mode"] = args.feedback_mode
 
     level_name = str(config["runtime"].get("log_level", "INFO")).upper()
     level = getattr(logging, level_name, logging.INFO)
@@ -95,8 +127,26 @@ def main():
     pose = PoseEstimator(config["pose"])
     smoother = MetricSmoother(config["metrics"])
     mapper = SpineMapper(config["mapping"])
+    software_cfg = config.get("software_feedback", {})
+    software_enabled = bool(software_cfg.get("enabled", False))
+    allow_hardware = bool(software_cfg.get("allow_hardware_output", False))
+    signal_source = str(software_cfg.get("source", "neck")).lower()
+    metric_signal_mapper = None
+    face_signal_mapper = None
+    if software_enabled and signal_source == "face_proximity":
+        face_signal_mapper = FaceProximitySignalMapper(software_cfg)
+    else:
+        metric_signal_mapper = PostureSignalMapper(software_cfg)
+    feedback = (
+        create_feedback_controller(software_cfg, config["runtime"]["dry_run"])
+        if software_enabled
+        else NoopFeedbackController()
+    )
+
     use_stepper = bool(config.get("stepper", {}).get("enabled", False))
-    if use_stepper:
+    if software_enabled and not allow_hardware:
+        actuator = _NoopActuator()
+    elif use_stepper:
         actuator = create_stepper_controller(config["stepper"], config["runtime"]["dry_run"])
     else:
         actuator = create_servo_controller(config["servo"], config["runtime"]["dry_run"])
@@ -114,6 +164,7 @@ def main():
     fps_timer = time.time()
     fps_value = 0.0
     last_log = 0.0
+    last_feedback_level = 0.0
 
     try:
         while True:
@@ -135,13 +186,17 @@ def main():
                     logging.error("Pose processing failed: %s", exc)
 
                 raw_metrics = compute_metrics(
-                    landmarks, config["metrics"].get("visibility_threshold", 0.5)
+                    landmarks,
+                    config["metrics"].get("visibility_threshold", 0.5),
+                    config["metrics"].get("enable_upper_body_fallback", True),
                 )
                 filtered = smoother.update(raw_metrics, now)
                 last_filtered = filtered
                 last_metrics = normalize_metrics(filtered, config["calibration"], config["mapping"])
                 last_frame = frame
                 last_landmarks = landmarks
+                if software_enabled and face_signal_mapper is not None:
+                    last_feedback_level = face_signal_mapper.map_landmarks(landmarks)
 
                 fps_counter += 1
                 if now - fps_timer >= 1.0:
@@ -160,8 +215,13 @@ def main():
 
             if now - last_servo >= servo_interval:
                 last_servo = now
-                angles = mapper.map_metrics(last_metrics, now)
-                actuator.set_angles(angles)
+                if not software_enabled or allow_hardware:
+                    angles = mapper.map_metrics(last_metrics, now)
+                    actuator.set_angles(angles)
+                if software_enabled:
+                    if metric_signal_mapper is not None:
+                        last_feedback_level = metric_signal_mapper.map_metrics(last_metrics)
+                    feedback.set_level(last_feedback_level)
 
             if config["runtime"]["show_debug_view"] and last_frame is not None and last_filtered:
                 overlay = last_frame.copy()
@@ -174,12 +234,16 @@ def main():
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
 
+            if software_enabled:
+                feedback.poll()
+
             time.sleep(0.001)
 
     except KeyboardInterrupt:
         pass
     finally:
         actuator.close()
+        feedback.close()
         camera.close()
         pose.close()
         if config["runtime"]["show_debug_view"]:

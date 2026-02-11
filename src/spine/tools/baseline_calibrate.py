@@ -44,7 +44,9 @@ def main():
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             landmarks = pose.process(frame_rgb)
             metrics = compute_metrics(
-                landmarks, config["metrics"].get("visibility_threshold", 0.5)
+                landmarks,
+                config["metrics"].get("visibility_threshold", 0.5),
+                config["metrics"].get("enable_upper_body_fallback", True),
             )
             if metrics.lean_deg is not None:
                 samples["lean_deg"].append(metrics.lean_deg)

@@ -46,7 +46,9 @@ def _choose_side(landmarks, left_index, right_index):
     return left_index if left_vis >= right_vis else right_index
 
 
-def compute_metrics(landmarks, visibility_threshold=0.5):
+def compute_metrics(
+    landmarks, visibility_threshold=0.5, allow_upper_body_neck_fallback=True
+):
     if not landmarks:
         return MetricValues(None, None, None)
 
@@ -90,6 +92,26 @@ def compute_metrics(landmarks, visibility_threshold=0.5):
         forward = 180.0 - angle
         sign = 1.0 if v1[0] >= 0 else -1.0
         neck_deg = sign * forward
+    elif allow_upper_body_neck_fallback:
+        upper_body_vis = min(
+            _visibility(landmarks[neck_side]),
+            _visibility(landmarks[shoulder_side]),
+            _visibility(landmarks[left_shoulder]),
+            _visibility(landmarks[right_shoulder]),
+        )
+        if upper_body_vis >= visibility_threshold:
+            ear = landmarks[neck_side]
+            shoulder = landmarks[shoulder_side]
+            left = landmarks[left_shoulder]
+            right = landmarks[right_shoulder]
+            shoulder_span = abs(right.x - left.x)
+            vertical_reference = abs(shoulder.y - ear.y)
+            if vertical_reference < 1e-4:
+                vertical_reference = shoulder_span
+            vertical_reference = max(vertical_reference, 1e-4)
+            forward = math.degrees(math.atan2(abs(ear.x - shoulder.x), vertical_reference))
+            sign = 1.0 if (ear.x - shoulder.x) >= 0 else -1.0
+            neck_deg = sign * min(forward, 85.0)
 
     tilt_deg = None
     if shoulder_vis >= visibility_threshold:

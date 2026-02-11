@@ -1,6 +1,6 @@
-# Project 1 - Moving Spine (Posture Mapping)
+# Project 1 - Posture Feedback Runtime
 
-This repo provides a minimal Raspberry Pi pipeline that maps a single-person pose to a multi-segment spine driven by servos. It focuses on deterministic posture metrics (lean, neck angle, shoulder tilt) and smooth servo mapping without classification.
+This repo provides a posture feedback pipeline that can drive either hardware actuators (servos/steppers) or software feedback (ambient fullscreen overlay and/or screen brightness). It focuses on deterministic posture metrics (lean, neck angle, shoulder tilt) and smooth signal mapping without classification.
 
 ## Repo layout
 
@@ -13,6 +13,7 @@ src/spine/
   metrics.py
   filter.py
   mapping.py
+  feedback.py
   servo.py
   main.py
   tools/
@@ -34,6 +35,7 @@ src/spine/
    - `pip install -U pip`
    - `pip install -e .`
    - If you do not need a GUI window, you can replace `opencv-python` with `opencv-python-headless`.
+   - On Homebrew Python (macOS), install Tk support for overlay mode: `brew install python-tk@3.11`
 
 ## Pose backend compatibility
 
@@ -46,12 +48,23 @@ src/spine/
 
 ## Running
 
-Dry run (no servos):
+Software feedback from the default config:
+```
+python -m spine.main --config config/config.json
+```
+
+Force software overlay mode (starts transparent and darkens as you move closer than baseline):
+```
+python -m spine.main --config config/config.json --software-feedback --feedback-mode overlay
+```
+Keep your neutral posture for the first ~2 seconds so the baseline can lock.
+
+Dry run (no hardware or software feedback output):
 ```
 python -m spine.main --config config/config.json --dry-run
 ```
 
-Debug view (requires GUI):
+Debug view (camera + landmarks, requires GUI):
 ```
 python -m spine.main --config config/config.json --debug-view
 ```
@@ -77,6 +90,20 @@ python -m spine.tools.baseline_calibrate --config config/config.json --seconds 3
 ## Config highlights (`config/config.json`)
 
 - `camera.backend`: `picamera2` or `opencv`
+- `metrics.enable_upper_body_fallback`: keeps neck metric working when hips are out of frame (close camera framing)
+- `mapping.control_mode`: `spine_blend` (original multi-metric mapping) or `hunch_push`
+- `mapping.hunch_push`: hunch trigger settings (`activation_threshold`, `full_scale`, `max_push_deg`)
+- `software_feedback.enabled`: enables software output loop
+- `software_feedback.mode`: `overlay`, `brightness`, or `both`
+- `software_feedback.allow_hardware_output`: keep hardware output active alongside software feedback
+- `software_feedback.source`: signal source (`face_proximity` by default)
+- `software_feedback.activation_threshold` / `full_scale`: face-distance ratios mapped to 0..1 feedback intensity
+- `software_feedback.face_proximity.baseline_samples`: initial frames used to lock baseline face size
+- `software_feedback.face_proximity.visibility_threshold`: minimum landmark visibility to trust face spacing
+- `software_feedback.overlay.max_opacity`: maximum overlay darkness when user is much closer than baseline
+- `software_feedback.brightness.min_percent` / `max_percent`: screen brightness range
+- `software_feedback.brightness.command_template`: optional custom shell template with `{percent}` and `{scalar}`
+- `software_feedback.overlay.disable_input`: enables click-through overlay behavior (enabled by default)
 - `mapping.segments`: number of spine servos
 - `mapping.weights` / `mapping.upper_weights`: curvature weighting
 - `mapping.gain`: exaggeration values per metric
@@ -84,6 +111,21 @@ python -m spine.tools.baseline_calibrate --config config/config.json --seconds 3
 - `mapping.directions`: per-servo direction multipliers (use -1 to invert)
 - `calibration.baseline`: captured upright posture offsets
 - `calibration.normalization`: degree ranges mapped to +/-1.0
+
+For two stepper arms that push a spring when the user is hunched:
+
+- Set `mapping.control_mode` to `hunch_push`.
+- Set `mapping.segments` to `2`.
+- Set `stepper.motors` with two GPIO pin sets and matching `angle_index` values (`0`, `1`).
+- Tune `mapping.directions` to `[1, -1]` or `[-1, 1]` so both arms push inward on hunch.
+
+Brightness control backends are best-effort:
+
+- macOS: `brightness` CLI if installed (`brew install brightness`)
+- Linux: `brightnessctl` or `xrandr`
+- Any OS: set `software_feedback.brightness.command_template` to your own command
+
+For the ambient-overlay workflow, keep `mode=overlay` and `source=face_proximity`.
 
 ## Optional systemd service
 
