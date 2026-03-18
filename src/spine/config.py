@@ -101,11 +101,12 @@ DEFAULT_CONFIG = {
             "disable_input": True,
             "alert_threshold": 0.92,
             "flash_interval_sec": 0.4,
-            "flash_opacity": 0.22,
-            "alert_text": "Fix posture",
-            "alert_text_color": "#FF3B30",
+            "flash_opacity": 1.0,
+            "alert_text": "FIX POSTURE",
+            "alert_text_color": "#FF0000",
             "alert_font_family": "Helvetica",
             "alert_font_size": 86,
+            "alert_text_rely": 0.42,
             "alert_chime_enabled": True,
             "alert_chime_cooldown_sec": 8.0,
             "alert_chime_command": "",
@@ -262,11 +263,12 @@ def normalize_config(config):
     overlay_cfg["y"] = int(overlay_cfg.get("y", 0))
     overlay_cfg["alert_threshold"] = float(overlay_cfg.get("alert_threshold", 0.92))
     overlay_cfg["flash_interval_sec"] = float(overlay_cfg.get("flash_interval_sec", 0.4))
-    overlay_cfg["flash_opacity"] = float(overlay_cfg.get("flash_opacity", 0.22))
-    overlay_cfg["alert_text"] = str(overlay_cfg.get("alert_text", "Fix posture"))
-    overlay_cfg["alert_text_color"] = str(overlay_cfg.get("alert_text_color", "#FF3B30"))
+    overlay_cfg["flash_opacity"] = float(overlay_cfg.get("flash_opacity", 1.0))
+    overlay_cfg["alert_text"] = str(overlay_cfg.get("alert_text", "FIX POSTURE"))
+    overlay_cfg["alert_text_color"] = str(overlay_cfg.get("alert_text_color", "#FF0000"))
     overlay_cfg["alert_font_family"] = str(overlay_cfg.get("alert_font_family", "Helvetica"))
     overlay_cfg["alert_font_size"] = int(overlay_cfg.get("alert_font_size", 86))
+    overlay_cfg["alert_text_rely"] = float(overlay_cfg.get("alert_text_rely", 0.42))
     overlay_cfg["alert_chime_enabled"] = bool(overlay_cfg.get("alert_chime_enabled", True))
     overlay_cfg["alert_chime_cooldown_sec"] = float(
         overlay_cfg.get("alert_chime_cooldown_sec", 8.0)

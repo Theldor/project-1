@@ -160,7 +160,7 @@ class SoftwareFeedbackTests(unittest.TestCase):
         self.assertTrue(trigger_chime)
 
         alpha, show_text, trigger_chime = state.evaluate(target_level=0.95, max_opacity=0.8, now=1.6)
-        self.assertAlmostEqual(alpha, 0.0)
+        self.assertAlmostEqual(alpha, 0.25)
         self.assertFalse(show_text)
         self.assertFalse(trigger_chime)
 

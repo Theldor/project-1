@@ -105,7 +105,8 @@ python -m spine.tools.baseline_calibrate --config config/config.json --seconds 3
 - `software_feedback.overlay.max_opacity`: maximum overlay darkness when user is much closer than baseline
 - `software_feedback.overlay.alert_threshold`: signal level that switches from dimming to flashing alert
 - `software_feedback.overlay.flash_interval_sec`: alert text blink interval
-- `software_feedback.overlay.flash_opacity`: overlay opacity during visible flash frame
+- `software_feedback.overlay.flash_opacity`: overlay opacity during alert mode (set to `1.0` for fully opaque background)
+- `software_feedback.overlay.alert_text_rely`: vertical text position (smaller = higher on screen)
 - `software_feedback.overlay.alert_chime_enabled`: play a notification chime when alert triggers
 - `software_feedback.overlay.alert_chime_command`: optional custom shell command for chime playback
 - `software_feedback.brightness.min_percent` / `max_percent`: screen brightness range

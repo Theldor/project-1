@@ -32,13 +32,15 @@ class ConfigFeedbackTests(unittest.TestCase):
         overlay.pop("alert_threshold", None)
         overlay.pop("flash_interval_sec", None)
         overlay.pop("flash_opacity", None)
+        overlay.pop("alert_text_rely", None)
 
         normalize_config(config)
 
         normalized = config["software_feedback"]["overlay"]
         self.assertAlmostEqual(normalized["alert_threshold"], 0.92)
         self.assertAlmostEqual(normalized["flash_interval_sec"], 0.4)
-        self.assertAlmostEqual(normalized["flash_opacity"], 0.22)
+        self.assertAlmostEqual(normalized["flash_opacity"], 1.0)
+        self.assertAlmostEqual(normalized["alert_text_rely"], 0.42)
 
 
 if __name__ == "__main__":

@@ -204,7 +204,7 @@ class OverlayAlertState:
         self._alert_active = True
         if self._flash_visible:
             return self.flash_opacity, True, just_triggered
-        return 0.0, False, False
+        return self.flash_opacity, False, False
 
 
 class OverlayFeedbackController:
@@ -221,13 +221,14 @@ class OverlayFeedbackController:
             "x": int(config.get("x", 0)),
             "y": int(config.get("y", 0)),
         }
-        self.alert_text = str(config.get("alert_text", "Fix posture"))
+        self.alert_text = str(config.get("alert_text", "FIX POSTURE")).upper()
         self.alert_text_color = str(config.get("alert_text_color", "#FF3B30"))
         self.alert_font_family = str(config.get("alert_font_family", "Helvetica"))
         self.alert_font_size = max(16, int(config.get("alert_font_size", 86)))
+        self.alert_text_rely = _clamp(float(config.get("alert_text_rely", 0.42)), 0.05, 0.95)
         self.alert_threshold = _clamp(float(config.get("alert_threshold", 0.92)), 0.0, 1.0)
         self.flash_interval_sec = max(0.05, float(config.get("flash_interval_sec", 0.4)))
-        self.flash_opacity = _clamp(float(config.get("flash_opacity", 0.22)), 0.0, 1.0)
+        self.flash_opacity = _clamp(float(config.get("flash_opacity", 1.0)), 0.0, 1.0)
         self.alert_chime_enabled = bool(config.get("alert_chime_enabled", True))
         self.alert_chime_cooldown_sec = max(0.0, float(config.get("alert_chime_cooldown_sec", 8.0)))
         self.alert_chime_command = str(config.get("alert_chime_command", "")).strip()
@@ -326,7 +327,7 @@ class OverlayFeedbackController:
                 bg="black",
                 font=(self.alert_font_family, self.alert_font_size, "bold"),
             )
-            alert_label.place(relx=0.5, rely=0.5, anchor="center")
+            alert_label.place(relx=0.5, rely=self.alert_text_rely, anchor="center")
             alert_label.place_forget()
             self._alert_label = alert_label
 
@@ -353,7 +354,7 @@ class OverlayFeedbackController:
         if visible == self._alert_label_visible:
             return
         if visible:
-            self._alert_label.place(relx=0.5, rely=0.5, anchor="center")
+            self._alert_label.place(relx=0.5, rely=self.alert_text_rely, anchor="center")
         else:
             self._alert_label.place_forget()
         self._alert_label_visible = visible
